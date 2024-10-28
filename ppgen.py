@@ -1,7 +1,8 @@
-from flask import Flask, render_template_string, request
-import requests
 import random
 import string
+
+import requests
+from flask import Flask, render_template_string, request
 
 app = Flask(__name__)
 
@@ -24,7 +25,7 @@ HTML = """
       <h1>Passphrase Generator</h1>
       <form method="post">
         <label for="min_length">Minimum Length:</label>
-        <input type="number" id="min_length" name="min_length" value="{{ min_length }}" min="8" max="100">
+        <input type="number" id="min_length" name="min_length" value="{{ min_length }}" min="8" max="128">
         <br><br>
         <label for="add_number">Add Random Number:</label>
         <input type="checkbox" role="switch" id="add_number" name="add_number" {% if add_number %}checked{% endif %}>
@@ -45,24 +46,44 @@ HTML = """
 </html>
 """
 
-def fetch_words():
+def fetch_words(min_length: int):
     """
     Fetch English words from the Datamuse API.
 
     Returns:
         List of English words.
     """
-    url = "https://api.datamuse.com/words?ml=word&max=10&v=en"
-    try:
-        response = requests.get(url, verify=VERIFY_SSL)
-        response.raise_for_status()
-        english_words = [word['word'] for word in response.json() if len(word['word']) > 2]
-        return english_words
-    except requests.RequestException as e:
-        print(f"Error fetching words: {e}")
-        return []
+    url = "https://random-word-api.vercel.app/api?words=1"
+    words_list = []
+    passphrase_conditions_met = False
+    while not passphrase_conditions_met:
+      try:
+          # Fetch words from the API
+          response = requests.get(url, verify=VERIFY_SSL)
 
-def generate_passphrase(words: list, min_length: int, add_number: bool):
+          # Check if the response is successful
+          response.raise_for_status()
+
+          print(response.json())
+
+          # Extract the first key of JSON response as a string, as long as the word length is greater than 2
+          word = response.json()[0]
+          if word and len(word) > 2:
+              words_list.append(word)
+
+      except requests.RequestException as e:
+          print(f"Error fetching words: {e}")
+          return []
+      
+      # Check if the total length of the words is greater than or equal to the minimum length
+      if len("".join(words_list)) >= min_length:
+        passphrase_conditions_met = True
+        print(f"Words: {words_list}")
+
+    return words_list
+
+
+def generate_passphrase(words: list, add_number: bool):
     """
     Generate a passphrase using two random words from the list.
 
@@ -75,42 +96,58 @@ def generate_passphrase(words: list, min_length: int, add_number: bool):
         Passphrase string.
     """
     passphrase = ""
-    while len(passphrase.replace(" ", "-")) < min_length:
-        if len(words) < 2:
-            return "Not enough words to generate a passphrase."
-        selected_words = random.sample(words, 2)
-        selected_words = [word.capitalize() for word in selected_words]
-        passphrase = '-'.join(selected_words).replace(" ", "-")
-        if len(passphrase) >= min_length:
-            break
+
+    words = [word.capitalize() for word in words]
+
+    # Join the words with a hyphen and replace spaces with hyphens (-)
+    passphrase = "-".join(words).replace(" ", "-")
+
     if add_number:
-        random_number = ''.join(random.choices(string.digits, k=2))
+        # Add a random number at the end of the passphrase, with a length of 2 digits
+        random_number = "".join(random.choices(string.digits, k=2))
         passphrase += f"-{random_number}"
     return passphrase
 
-@app.route('/', methods=['GET', 'POST'])
+
+@app.route("/", methods=["GET", "POST"])
 def index():
     """
     Render the HTML template and generate a passphrase.
-    
+
     Returns:
         Rendered HTML template.
     """
+    # Initialize variables
     passphrase = None
     error = None
     min_length = 16
     add_number = True
 
-    if request.method == 'POST':
-        min_length = int(request.form.get('min_length', 16))
-        add_number = 'add_number' in request.form  # Checkbox will be in form data only if checked
-        words = fetch_words()
+    # Handle POST request initiated by the user's form submission
+    if request.method == "POST":
+        # Get the minimum length and add_number values from the form
+        min_length = int(request.form.get("min_length", 16))
+        add_number = (
+            "add_number" in request.form
+        )
+
+        # Fetch words from the API
+        words = fetch_words(min_length)
+
+        # Generate a passphrase using the fetched words
         if words:
-            passphrase = generate_passphrase(words, min_length, add_number)
+            passphrase = generate_passphrase(words, add_number)
         else:
             error = "Failed to fetch words. Please try again."
-    
-    return render_template_string(HTML, passphrase=passphrase, error=error, min_length=min_length, add_number=add_number)
 
-if __name__ == '__main__':
+    return render_template_string(
+        HTML,
+        passphrase=passphrase,
+        error=error,
+        min_length=min_length,
+        add_number=add_number
+    )
+
+
+if __name__ == "__main__":
     app.run(debug=True)
