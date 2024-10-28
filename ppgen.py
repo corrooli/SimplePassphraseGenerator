@@ -64,8 +64,6 @@ def fetch_words(min_length: int):
           # Check if the response is successful
           response.raise_for_status()
 
-          print(response.json())
-
           # Extract the first key of JSON response as a string, as long as the word length is greater than 2
           word = response.json()[0]
           if word and len(word) > 2:
