@@ -1,16 +1,32 @@
+"""
+Minimalistic Passphrase Generator using Flask and Pico.css.
+
+This script generates a passphrase using two random English words fetched from the Vercel Random Word API.
+The user can specify the minimum length of the passphrase and whether to add a random number at the end.
+The generated passphrase is displayed to the user on the webpage.
+
+The Flask web application uses a simple HTML template with Pico.css for styling.
+Everything is contained in a single Python script for simplicity.
+
+Author: Oliver Corrodi
+Released under the GNU General Public License v3.0
+"""
+
+
 import random
 import string
 
 import requests
 from flask import Flask, render_template_string, request
 
+# Initialize the Flask app.
 app = Flask(__name__)
 
 # Flag to enable or disable SSL verification
-VERIFY_SSL = False
+VERIFY_SSL: bool = False
 
 # HTML template with Pico.css
-HTML = """
+HTML: str = """
 <!doctype html>
 <html lang="en">
   <head>
@@ -46,16 +62,19 @@ HTML = """
 </html>
 """
 
-def fetch_words(min_length: int):
+def fetch_words(min_length: int) -> list:
     """
     Fetch English words from the Datamuse API.
+
+    Args:
+        min_length: Minimum length of the passphrase.
 
     Returns:
         List of English words.
     """
-    url = "https://random-word-api.vercel.app/api?words=1"
-    words_list = []
-    passphrase_conditions_met = False
+    url: str = "https://random-word-api.vercel.app/api?words=1"
+    words_list: list = []
+    passphrase_conditions_met: bool = False
     while not passphrase_conditions_met:
       try:
           # Fetch words from the API
@@ -81,21 +100,20 @@ def fetch_words(min_length: int):
     return words_list
 
 
-def generate_passphrase(words: list, add_number: bool):
+def generate_passphrase(words: list, add_number: bool) -> str:
     """
     Generate a passphrase using two random words from the list.
 
     Args:
         words: List of English words.
-        min_length: Minimum length of the passphrase.
         add_number: Whether to add a random number at the end.
 
     Returns:
         Passphrase string.
     """
-    passphrase = ""
+    passphrase: str = ""
 
-    words = [word.capitalize() for word in words]
+    words: list = [word.capitalize() for word in words]
 
     # Join the words with a hyphen and replace spaces with hyphens (-)
     passphrase = "-".join(words).replace(" ", "-")
@@ -108,7 +126,7 @@ def generate_passphrase(words: list, add_number: bool):
 
 
 @app.route("/", methods=["GET", "POST"])
-def index():
+def index() -> str:
     """
     Render the HTML template and generate a passphrase.
 
@@ -146,6 +164,6 @@ def index():
         add_number=add_number
     )
 
-
+# Entry point for the application. Runs the Flask app.
 if __name__ == "__main__":
     app.run(debug=True)
