@@ -74,7 +74,7 @@ def fetch_words(min_length: int):
           return []
       
       # Check if the total length of the words is greater than or equal to the minimum length
-      if len("".join(words_list)) >= min_length:
+      if len(words_list) >= 2 and len("".join(words_list)) >= min_length:
         passphrase_conditions_met = True
         print(f"Words: {words_list}")
 
