@@ -42,7 +42,7 @@ HTML: str = """
 	<h1>Passphrase Generator</h1>
 	<form method="post">
 		<label for="min_length">Minimum Length:</label>
-		<input type="number" id="min_length" name="min_length" value="{{ min_length }}" min="8" max="128">
+		<input type="number" id="min_length" name="min_length" value="{{ min_length }}" min="3" max="16">
 		<br><br>
 		<input type="checkbox" role="switch" id="add_number" name="add_number" {% if add_number %}checked{% endif %}>
 		<label for="add_number">Add Random Number</label>
@@ -80,30 +80,22 @@ def fetch_words(min_length: int) -> list:
     Returns:
         List of English words.
     """
-    url: str = "https://random-word-api.vercel.app/api?words=1"
+    url: str = f"https://random-word-api.vercel.app/api?words={min_length}"
     words_list: list = []
-    passphrase_conditions_met: bool = False
-    while not passphrase_conditions_met:
-        try:
-            # Fetch words from the API
-            response = requests.get(url, verify=VERIFY_SSL)
+    try:
+		# Fetch words from the API
+        response = requests.get(url, verify=VERIFY_SSL)
 
-            # Check if the response is successful
-            response.raise_for_status()
+		# Check if the response is successful
+        response.raise_for_status()
+		
+		# Extract the words from the response, API delivers data like ["grub","craftsman","tinkling","gumdrop","daily","twiddle","shorts","anthem","yin","obligate","scalping","immorally"]
+        words_list = response.json()
+        print(response.json())
 
-            # Extract the first key of JSON response as a string, as long as the word length is greater than 2
-            word = response.json()[0]
-            if word and len(word) > 2:
-                words_list.append(word)
-
-        except requests.RequestException as e:
-            print(f"Error fetching words: {e}")
-            return []
-
-        # Check if the total length of the words is greater than or equal to the minimum length
-        if len(words_list) >= 2 and len("".join(words_list)) >= min_length:
-            passphrase_conditions_met = True
-            print(f"Words: {words_list}")
+    except requests.RequestException as e:
+        print(f"Error fetching words: {e}")
+        return []
 
     return words_list
 
@@ -149,7 +141,7 @@ def index() -> str:
     # Initialize variables
     passphrase = None
     error = None
-    min_length = 16
+    min_length = 3
     add_number = True
     add_special = False
     strength = None
@@ -157,7 +149,7 @@ def index() -> str:
     # Handle POST request initiated by the user's form submission
     if request.method == "POST":
         # Get the minimum length and add_number values from the form
-        min_length = int(request.form.get("min_length", 16))
+        min_length = int(request.form.get("min_length", 3))
         add_number = "add_number" in request.form
         add_special = "add_special" in request.form  # Retrieve add_special option
 
