@@ -12,7 +12,6 @@ Author: Oliver Corrodi
 Released under the GNU General Public License v3.0
 """
 
-
 import random
 import string
 
@@ -31,44 +30,45 @@ VERIFY_SSL: bool = False
 HTML: str = """
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Passphrase Generator</title>
-    <!-- Include Pico.css from a CDN -->
-    <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@1.*/css/pico.min.css">
-  </head>
-  <body>
-    <main class="container">
-      <h1>Passphrase Generator</h1>
-      <form method="post">
-        <label for="min_length">Minimum Length:</label>
-        <input type="number" id="min_length" name="min_length" value="{{ min_length }}" min="8" max="128">
-        <br><br>
-        <label for="add_number">Add Random Number:</label>
-        <input type="checkbox" role="switch" id="add_number" name="add_number" {% if add_number %}checked{% endif %}>
-        <br><br>
-        <label for="add_special">Add Special Character:</label>
-        <input type="checkbox" role="switch" id="add_special" name="add_special" {% if add_special %}checked{% endif %}>
-        <br><br>
-        <button type="submit">Generate Passphrase</button>
-      </form>
-      <article>
-      {% if passphrase %}
-        <p><strong>{{ passphrase }}</strong></p>
-      {% endif %}
-      {% if error %}
-        <h2>Error:</h2>
-        <p><strong>{{ error }}</strong></p>
-      {% endif %}
-      {% if strength %}
-        <p><strong>Strength:</strong> {{ strength }}</p>
-      {% endif %}
-      </article>
-    </main>
-  </body>
+	<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Passphrase Generator</title>
+	<!-- Include Pico.css from a CDN -->
+	<link rel="stylesheet" href="https://unpkg.com/@picocss/pico@1.*/css/pico.min.css">
+	</head>
+	<body>
+	<main class="container">
+	<h1>Passphrase Generator</h1>
+	<form method="post">
+		<label for="min_length">Minimum Length:</label>
+		<input type="number" id="min_length" name="min_length" value="{{ min_length }}" min="8" max="128">
+		<br><br>
+		<input type="checkbox" role="switch" id="add_number" name="add_number" {% if add_number %}checked{% endif %}>
+		<label for="add_number">Add Random Number</label>
+		<br><br>
+		<input type="checkbox" role="switch" id="add_special" name="add_special" {% if add_special %}checked{% endif %}>
+		<label for="add_special">Add Special Character</label>
+		<br><br>
+		<button type="submit">Generate Passphrase</button>
+	</form>
+	<article>
+	{% if passphrase %}
+		<p><strong>{{ passphrase }}</strong></p>
+	{% endif %}
+	{% if error %}
+		<h2>Error:</h2>
+		<p><strong>{{ error }}</strong></p>
+	{% endif %}
+	{% if strength %}
+		<p><strong>Strength:</strong> {{ strength }}</p>
+	{% endif %}
+	</article>
+	</main>
+	</body>
 </html>
 """
+
 
 def fetch_words(min_length: int) -> list:
     """
@@ -84,38 +84,38 @@ def fetch_words(min_length: int) -> list:
     words_list: list = []
     passphrase_conditions_met: bool = False
     while not passphrase_conditions_met:
-      try:
-          # Fetch words from the API
-          response = requests.get(url, verify=VERIFY_SSL)
+        try:
+            # Fetch words from the API
+            response = requests.get(url, verify=VERIFY_SSL)
 
-          # Check if the response is successful
-          response.raise_for_status()
+            # Check if the response is successful
+            response.raise_for_status()
 
-          # Extract the first key of JSON response as a string, as long as the word length is greater than 2
-          word = response.json()[0]
-          if word and len(word) > 2:
-              words_list.append(word)
+            # Extract the first key of JSON response as a string, as long as the word length is greater than 2
+            word = response.json()[0]
+            if word and len(word) > 2:
+                words_list.append(word)
 
-      except requests.RequestException as e:
-          print(f"Error fetching words: {e}")
-          return []
-      
-      # Check if the total length of the words is greater than or equal to the minimum length
-      if len(words_list) >= 2 and len("".join(words_list)) >= min_length:
-        passphrase_conditions_met = True
-        print(f"Words: {words_list}")
+        except requests.RequestException as e:
+            print(f"Error fetching words: {e}")
+            return []
+
+        # Check if the total length of the words is greater than or equal to the minimum length
+        if len(words_list) >= 2 and len("".join(words_list)) >= min_length:
+            passphrase_conditions_met = True
+            print(f"Words: {words_list}")
 
     return words_list
 
 
-def generate_passphrase(words: list, add_number: bool, add_special: bool, min_length: int) -> str:
-
+def generate_passphrase(words: list, add_number: bool, add_special: bool) -> str:
     """
     Generate a passphrase using two random words from the list.
 
     Args:
         words: List of English words.
         add_number: Whether to add a random number at the end.
+        add_special: Whether to add a special character at the end.
 
     Returns:
         Passphrase string.
@@ -158,9 +158,7 @@ def index() -> str:
     if request.method == "POST":
         # Get the minimum length and add_number values from the form
         min_length = int(request.form.get("min_length", 16))
-        add_number = (
-            "add_number" in request.form
-        )
+        add_number = "add_number" in request.form
         add_special = "add_special" in request.form  # Retrieve add_special option
 
         # Fetch words from the API
@@ -168,8 +166,8 @@ def index() -> str:
 
         # Generate a passphrase using the fetched words
         if words:
-            passphrase = generate_passphrase(words, add_number, add_special, min_length)
-            strength = check_password_strength(passphrase) # Check passphrase strength
+            passphrase = generate_passphrase(words, add_number, add_special)
+            strength = check_password_strength(passphrase)  # Check passphrase strength
             print(f"Generated Passphrase: {passphrase}")
             print(f"Password Strength: {strength}")
         else:
@@ -182,8 +180,9 @@ def index() -> str:
         min_length=min_length,
         add_number=add_number,
         add_special=add_special,
-        strength=strength
+        strength=strength,
     )
+
 
 def check_password_strength(passphrase: str) -> str:
     """
@@ -193,12 +192,20 @@ def check_password_strength(passphrase: str) -> str:
     - Contains uppercase and lowercase letters
     - Contains digits
     - Contains special characters
+
+    Args:
+        passphrase: Passphrase string.
+
+    Returns:
+        Strength rating: "Weak", "Medium", or "Strong".
     """
     length = len(passphrase)
     has_upper = bool(re.search(r"[A-Z]", passphrase))
     has_lower = bool(re.search(r"[a-z]", passphrase))
     has_digit = bool(re.search(r"\d", passphrase))
-    has_special = bool(re.search(r"[^\w\s-]", passphrase))  # Special characters other than hyphens
+    has_special = bool(
+        re.search(r"[^\w\s-]", passphrase)
+    )  # Special characters other than hyphens
 
     # Scoring logic
     score = sum([has_upper, has_lower, has_digit, has_special])
@@ -206,10 +213,10 @@ def check_password_strength(passphrase: str) -> str:
     # Evaluate based on length and score
     if length >= 12 and score == 4:
         return "Strong"
-    elif length >= 8 and score >= 3:
+    if length >= 8 and score >= 3:
         return "Medium"
-    else:
-        return "Weak"
+    return "Weak"
+
 
 # Entry point for the application. Runs the Flask app.
 if __name__ == "__main__":
