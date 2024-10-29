@@ -16,6 +16,8 @@ Released under the GNU General Public License v3.0
 import random
 import string
 
+import re  # Import regex module for password strength checking
+
 import requests
 from flask import Flask, render_template_string, request
 
@@ -46,6 +48,9 @@ HTML: str = """
         <label for="add_number">Add Random Number:</label>
         <input type="checkbox" role="switch" id="add_number" name="add_number" {% if add_number %}checked{% endif %}>
         <br><br>
+        <label for="add_special">Add Special Character:</label>
+        <input type="checkbox" role="switch" id="add_special" name="add_special" {% if add_special %}checked{% endif %}>
+        <br><br>
         <button type="submit">Generate Passphrase</button>
       </form>
       <article>
@@ -55,6 +60,9 @@ HTML: str = """
       {% if error %}
         <h2>Error:</h2>
         <p><strong>{{ error }}</strong></p>
+      {% endif %}
+      {% if strength %}
+        <p><strong>Strength:</strong> {{ strength }}</p>
       {% endif %}
       </article>
     </main>
@@ -100,7 +108,8 @@ def fetch_words(min_length: int) -> list:
     return words_list
 
 
-def generate_passphrase(words: list, add_number: bool) -> str:
+def generate_passphrase(words: list, add_number: bool, add_special: bool, min_length: int) -> str:
+
     """
     Generate a passphrase using two random words from the list.
 
@@ -119,9 +128,13 @@ def generate_passphrase(words: list, add_number: bool) -> str:
     passphrase = "-".join(words).replace(" ", "-")
 
     if add_number:
-        # Add a random number at the end of the passphrase, with a length of 2 digits
+        # Add a 2-digit random number at the end of the passphrase
         random_number = "".join(random.choices(string.digits, k=2))
-        passphrase += f"-{random_number}"
+        passphrase += random_number
+    if add_special:
+        # Add a special character if specified
+        special_char = random.choice(["#", "!"])
+        passphrase += special_char
     return passphrase
 
 
@@ -138,6 +151,8 @@ def index() -> str:
     error = None
     min_length = 16
     add_number = True
+    add_special = False
+    strength = None
 
     # Handle POST request initiated by the user's form submission
     if request.method == "POST":
@@ -146,13 +161,17 @@ def index() -> str:
         add_number = (
             "add_number" in request.form
         )
+        add_special = "add_special" in request.form  # Retrieve add_special option
 
         # Fetch words from the API
         words = fetch_words(min_length)
 
         # Generate a passphrase using the fetched words
         if words:
-            passphrase = generate_passphrase(words, add_number)
+            passphrase = generate_passphrase(words, add_number, add_special, min_length)
+            strength = check_password_strength(passphrase) # Check passphrase strength
+            print(f"Generated Passphrase: {passphrase}")
+            print(f"Password Strength: {strength}")
         else:
             error = "Failed to fetch words. Please try again."
 
@@ -161,8 +180,36 @@ def index() -> str:
         passphrase=passphrase,
         error=error,
         min_length=min_length,
-        add_number=add_number
+        add_number=add_number,
+        add_special=add_special,
+        strength=strength
     )
+
+def check_password_strength(passphrase: str) -> str:
+    """
+    Check the strength of the passphrase and return a descriptive rating.
+    Criteria:
+    - Length: longer is stronger
+    - Contains uppercase and lowercase letters
+    - Contains digits
+    - Contains special characters
+    """
+    length = len(passphrase)
+    has_upper = bool(re.search(r"[A-Z]", passphrase))
+    has_lower = bool(re.search(r"[a-z]", passphrase))
+    has_digit = bool(re.search(r"\d", passphrase))
+    has_special = bool(re.search(r"[^\w\s-]", passphrase))  # Special characters other than hyphens
+
+    # Scoring logic
+    score = sum([has_upper, has_lower, has_digit, has_special])
+
+    # Evaluate based on length and score
+    if length >= 12 and score == 4:
+        return "Strong"
+    elif length >= 8 and score >= 3:
+        return "Medium"
+    else:
+        return "Weak"
 
 # Entry point for the application. Runs the Flask app.
 if __name__ == "__main__":
